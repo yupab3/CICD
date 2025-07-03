@@ -2,11 +2,12 @@ name: Baekjoon Test
 
 on:
   push:
+    branches: [main]
     paths:
       - '**.cpp'
       - '**.txt'
+      - 'test.sh'
       - '.github/workflows/test.yml'
-  pull_request:
 
 jobs:
   test:
@@ -16,8 +17,9 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Install build tools
+    - name: Install g++
       run: sudo apt-get update && sudo apt-get install -y g++
 
     - name: Run test script
       run: bash ./test.sh
+
