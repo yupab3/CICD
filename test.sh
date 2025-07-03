@@ -9,45 +9,41 @@ for dir in $dirs; do
 
     g++ -std=c++17 -o main main.cpp
 
-    # 입력과 출력을 === 기준으로 분할
-    IFS=$'\x1E'  # ASCII RS(레코드 구분자)처럼 사용
-    input_raw=$(awk -v RS='===\n' '{gsub(/^\n+|\n+$/, "", $0); print}' input.txt | awk '{print $0 "\x1E"}')
-    expected_raw=$(awk -v RS='===\n' '{gsub(/^\n+|\n+$/, "", $0); print}' expected.txt | awk '{print $0 "\x1E"}')
+    # 기존 분할 파일 삭제
+    rm -f input_case_* expected_case_*
 
-    # 문자열을 배열로 쪼갬 (mapfile 없이)
-    input_cases=()
-    expected_cases=()
+    # === 기준으로 input.txt 쪼개기
+    csplit --quiet --prefix=input_case_ --suffix-format="%03d.txt" input.txt '/^===$/+1' '{*}'
+    # 마지막 파일이 === 줄만 들어있는 경우 제거
+    find . -name 'input_case_*.txt' -exec sed -i '/^===$/d' {} \;
 
-    while IFS= read -r -d $'\x1E' block; do
-        input_cases+=("$block")
-    done <<< "$input_raw"
+    # expected.txt도 마찬가지
+    csplit --quiet --prefix=expected_case_ --suffix-format="%03d.txt" expected.txt '/^===$/+1' '{*}'
+    find . -name 'expected_case_*.txt' -exec sed -i '/^===$/d' {} \;
 
-    while IFS= read -r -d $'\x1E' block; do
-        expected_cases+=("$block")
-    done <<< "$expected_raw"
+    input_files=(input_case_*.txt)
+    expected_files=(expected_case_*.txt)
 
-    # 비교
-    if [ ${#input_cases[@]} -ne ${#expected_cases[@]} ]; then
-        echo "❌ Number of test cases mismatch"
-        echo "Inputs: ${#input_cases[@]}, Outputs: ${#expected_cases[@]}"
+    if [ ${#input_files[@]} -ne ${#expected_files[@]} ]; then
+        echo "❌ Test case count mismatch"
+        echo "Inputs: ${#input_files[@]}, Outputs: ${#expected_files[@]}"
         exit 1
     fi
 
-    for i in "${!input_cases[@]}"; do
+    for i in "${!input_files[@]}"; do
         echo ""
         echo "▶️ Test Case $((i+1))"
         echo "--- Input ---"
-        printf "%s\n" "${input_cases[i]}"
+        cat "${input_files[i]}"
 
-        echo "${input_cases[i]}" | ./main > output.txt
-        printf "%s\n" "${expected_cases[i]}" > expected.txt.tmp
+        ./main < "${input_files[i]}" > output.txt
 
-        if diff -q output.txt expected.txt.tmp > /dev/null; then
+        if diff -q output.txt "${expected_files[i]}" > /dev/null; then
             echo "✅ Passed"
         else
             echo "❌ Failed Test Case $((i+1))"
             echo "--- Expected ---"
-            cat expected.txt.tmp
+            cat "${expected_files[i]}"
             echo "--- Got ---"
             cat output.txt
             exit 1
