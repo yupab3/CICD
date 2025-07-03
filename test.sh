@@ -1,11 +1,19 @@
 #!/bin/bash
-set -e
+set -ex  # -x: 실행되는 명령어 출력 / -e: 에러시 중단
 
-# 모든 문제 디렉토리를 반복
-for dir in $(find . -type d -regex './[0-9]\+'); do
+# 문제 디렉토리 목록 가져오기
+dirs=$(find . -type d -regex './[0-9]\+')
+
+if [ -z "$dirs" ]; then
+  echo "⚠️ No problem directories found"
+  exit 1
+fi
+
+# 각 문제 디렉토리마다 테스트
+for dir in $dirs; do
     echo "🔍 Testing $dir"
     cd "$dir"
-    
+
     if [ ! -f main.cpp ]; then
         echo "❌ No main.cpp in $dir"
         cd - > /dev/null
@@ -13,14 +21,10 @@ for dir in $(find . -type d -regex './[0-9]\+'); do
     fi
 
     g++ -std=c++17 -o main main.cpp
-    if [ $? -ne 0 ]; then
-        echo "❌ Compilation failed in $dir"
-        cd - > /dev/null
-        continue
-    fi
 
-    # 실행 결과를 비교
+    # 실행 및 비교
     ./main < input.txt > output.txt
+
     if diff -q output.txt expected.txt > /dev/null; then
         echo "✅ Passed"
     else
