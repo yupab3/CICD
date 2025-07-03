@@ -1,7 +1,6 @@
 #!/bin/bash
-set -ex
+set -e
 
-# 문제별 디렉토리 찾기
 dirs=$(find . -type f -name 'main.cpp' -exec dirname {} \; | sort -u)
 
 for dir in $dirs; do
@@ -10,9 +9,9 @@ for dir in $dirs; do
 
     g++ -std=c++17 -o main main.cpp
 
-    # input.txt와 expected.txt를 빈 줄 기준으로 분할
-    IFS='' readarray -t input_chunks < <(awk -v RS= '{gsub(/\n$/, "", $0); print $0}' input.txt)
-    IFS='' readarray -t expected_chunks < <(awk -v RS= '{gsub(/\n$/, "", $0); print $0}' expected.txt)
+    # split input/output on "===" delimiter
+    IFS=$'\n' read -d '' -r -a input_chunks < <(awk 'BEGIN{RS="==="} {gsub(/^\n+|\n+$/, "", $0); print}' input.txt && printf '\0')
+    IFS=$'\n' read -d '' -r -a expected_chunks < <(awk 'BEGIN{RS="==="} {gsub(/^\n+|\n+$/, "", $0); print}' expected.txt && printf '\0')
 
     if [ ${#input_chunks[@]} -ne ${#expected_chunks[@]} ]; then
         echo "❌ Number of inputs and expected outputs do not match"
@@ -23,11 +22,11 @@ for dir in $dirs; do
     for i in "${!input_chunks[@]}"; do
         echo "▶️ Test Case $((i+1))"
 
-        # 각각 실행
-        echo "${input_chunks[i]}" | ./main > output.txt
+        # 실행
+        printf "%s\n" "${input_chunks[i]}" | ./main > output.txt
 
         # 기대값 저장
-        echo "${expected_chunks[i]}" > expected_tmp.txt
+        printf "%s\n" "${expected_chunks[i]}" > expected_tmp.txt
 
         # 비교
         if diff -q output.txt expected_tmp.txt > /dev/null; then
@@ -35,9 +34,9 @@ for dir in $dirs; do
         else
             echo "❌ Failed Test Case $((i+1))"
             echo "--- Input ---"
-            echo "${input_chunks[i]}"
+            printf "%s\n" "${input_chunks[i]}"
             echo "--- Expected ---"
-            echo "${expected_chunks[i]}"
+            printf "%s\n" "${expected_chunks[i]}"
             echo "--- Got ---"
             cat output.txt
             exit 1
