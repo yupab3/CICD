@@ -1,7 +1,13 @@
 #!/bin/bash
 set -e
 
-dirs=$(find . -type f -name 'main.cpp' -exec dirname {} \; | sort -u)
+# 최근 커밋에서 변경된 main.cpp, input.txt, expected.txt 파일이 속한 디렉토리만 추출
+dirs=$(git diff --name-only HEAD^ HEAD | grep -E 'main\.cpp|input\.txt|expected\.txt' | xargs -n1 dirname | sort -u)
+
+if [ -z "$dirs" ]; then
+    echo "✅ No relevant changes, skipping tests."
+    exit 0
+fi
 
 for dir in $dirs; do
     echo "🔍 Testing $dir"
